@@ -1,4 +1,5 @@
 /**
+ 
  ******************************************************************************
  * @file           : main.c
  * @brief          : Main program body
@@ -67,10 +68,13 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 void ConfigLoRaClick(void);
+<<<<<<< HEAD
 void ConversationHexaChar(char TabChar[2], int nombreaconvertir);
 char HexaChar(int NbrbaseDix);
 void AjouterUneValeurDansTrame(char Trame[10], char TabValeurASCII[2]);
 unsigned char readDHT22(float* temperature, float* humidity);
+=======
+>>>>>>> parent of de539d4... Envoi de caractere en hexadecimal
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -88,11 +92,15 @@ unsigned char readDHT22(float* temperature, float* humidity);
  */
 int main(void) {
 
+<<<<<<< HEAD
 	//char trame3[] = "radio tx 0A\r\n";
 	float temp, hum;
 	char TrameATTx[15];
 	char TCarac[2];
 	int valeur = 25;
+=======
+	char trame3[] = "radio tx 0A\r\n";
+>>>>>>> parent of de539d4... Envoi de caractere en hexadecimal
 
 	/* USER CODE BEGIN 1 */
 
@@ -122,6 +130,7 @@ int main(void) {
 	ConfigLoRaClick();
 	/* USER CODE END 2 */
 
+<<<<<<< HEAD
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
@@ -130,6 +139,15 @@ int main(void) {
 		AjouterUneValeurDansTrame(TrameATTx, TCarac);
 		HAL_UART_Transmit(&huart1, (uint8_t*) TrameATTx,(uint16_t) sizeof(TrameATTx), HAL_MAX_DELAY);
 		HAL_Delay(4000); //J'envois toutes les 1 sec
+=======
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+
+	  HAL_UART_Transmit(&huart1, (uint8_t*) trame3, (uint16_t) sizeof(trame3), HAL_MAX_DELAY);
+	  HAL_Delay(4000); //J'envois toutes les 1 sec
+>>>>>>> parent of de539d4... Envoi de caractere en hexadecimal
 
 		/* USER CODE END WHILE */
 
@@ -325,9 +343,14 @@ void ConfigLoRaClick(void) {
 			HAL_MAX_DELAY);
 	HAL_Delay(4000);
 
+<<<<<<< HEAD
 	//Verifiaction de la capacitï¿½ de trasmision
 	HAL_UART_Transmit(&huart1, (uint8_t*) trame1, (uint16_t) sizeof(trame1),
 			HAL_MAX_DELAY);
+=======
+	//Verifiaction de la capacité de trasmision
+	HAL_UART_Transmit(&huart1, (uint8_t*) trame1, (uint16_t) sizeof(trame1), HAL_MAX_DELAY);
+>>>>>>> parent of de539d4... Envoi de caractere en hexadecimal
 	HAL_Delay(4000);
 
 	//Wacth Dog desactive
@@ -335,6 +358,7 @@ void ConfigLoRaClick(void) {
 			HAL_MAX_DELAY);
 	HAL_Delay(4000);
 }
+<<<<<<< HEAD
 
 void ConversationHexaChar(char TabChar[2], int nombreaconvertir) {
 	int digit1 = 0, digit2 = 0;
@@ -511,4 +535,6 @@ unsigned char readDHT22(float* temperature, float* humidity) {
 	}
 	return DHT_SUCCESS;
 }
+=======
+>>>>>>> parent of de539d4... Envoi de caractere en hexadecimal
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
