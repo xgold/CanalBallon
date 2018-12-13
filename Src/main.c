@@ -61,6 +61,9 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 void ConfigLoRaClick(void);
+void ConversationHexaChar(char TabChar[2], int nombreaconvertir);
+char HexaChar(int NbrbaseDix);
+void AjouterUneValeurDansTrame(char Trame[10], char TabValeurASCII[2]);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -79,7 +82,10 @@ void ConfigLoRaClick(void);
 int main(void)
 {
 
-	char trame3[] = "radio tx 0A\r\n";
+	//char trame3[] = "radio tx 0A\r\n";
+	char TrameATTx[15];
+	char TCarac[2];
+	int valeur = 25;
 
   /* USER CODE BEGIN 1 */
 
@@ -113,8 +119,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-	  HAL_UART_Transmit(&huart1, (uint8_t*) trame3, (uint16_t) sizeof(trame3), HAL_MAX_DELAY);
+	  ConversationHexaChar(TCarac, valeur);
+	  AjouterUneValeurDansTrame(TrameATTx, TCarac);
+	  HAL_UART_Transmit(&huart1, (uint8_t*) TrameATTx, (uint16_t) sizeof(TrameATTx), HAL_MAX_DELAY);
 	  HAL_Delay(4000); //J'envois toutes les 1 sec
 
   /* USER CODE END WHILE */
@@ -319,7 +326,7 @@ void ConfigLoRaClick(void)
 	HAL_UART_Transmit(&huart1, (uint8_t*) trame, (uint16_t) sizeof(trame), HAL_MAX_DELAY);
 	HAL_Delay(4000);
 
-	//Verifiaction de la capacité de trasmision
+	//Verifiaction de la capacitï¿½ de trasmision
 	HAL_UART_Transmit(&huart1, (uint8_t*) trame1, (uint16_t) sizeof(trame1), HAL_MAX_DELAY);
 	HAL_Delay(4000);
 
@@ -327,4 +334,107 @@ void ConfigLoRaClick(void)
 	HAL_UART_Transmit(&huart1, (uint8_t*) trame2, (uint16_t) sizeof(trame2), HAL_MAX_DELAY);
 	HAL_Delay(4000);
 }
+
+void ConversationHexaChar(char TabChar[2], int nombreaconvertir)
+{
+    int digit1 = 0, digit2 = 0;
+
+    printf("Nombre binaire en cours ...\n");
+    digit1 = nombreaconvertir / 16;
+    //printf("%d", digit1);
+    digit2 = nombreaconvertir % 16;
+    //printf("%d\n", digit2);
+
+    TabChar[0] = HexaChar(digit1);
+    TabChar[1] = HexaChar(digit2);
+
+    printf("Hexa : %c%c\n", TabChar[0], TabChar[1]);
+}
+
+char HexaChar(int NbrbaseDix)
+{
+    char lettre;
+
+    switch(NbrbaseDix)
+    {
+        case 0 :
+            lettre = '0';
+            break;
+        case 1 :
+            lettre = '1';
+            break;
+        case 2 :
+            lettre = '2';
+            break;
+        case 3 :
+            lettre = '3';
+            break;
+        case 4 :
+            lettre = '4';
+            break;
+        case 5 :
+            lettre = '5';
+            break;
+        case 6 :
+            lettre = '6';
+            break;
+        case 7 :
+            lettre = '7';
+            break;
+        case 8 :
+            lettre = '8';
+            break;
+        case 9 :
+            lettre = '9';
+            break;
+        case 10 :
+            lettre = 'A';
+            break;
+        case 11 :
+            lettre = 'B';
+            break;
+        case 12 :
+            lettre = 'C';
+            break;
+        case 13 :
+            lettre = 'D';
+            break;
+        case 14 :
+            lettre = 'E';
+            break;
+        case 15 :
+            lettre = 'F';
+            break;
+        default :
+            lettre = '!';
+            break;
+    }
+
+    return lettre;
+}
+
+void AjouterUneValeurDansTrame(char Trame[10],  char TabValeurASCII[2])
+{
+    char EnteteTrame[] = "radio tx ";
+    int i = 0, j = 0;
+
+    while(EnteteTrame[i] != '\0')
+    {
+        Trame[i] = EnteteTrame[i];
+        //printf("%c", Trame[i]);
+        i++;
+    }
+
+    for(j = 0; j <= 1; j++)
+    {
+        Trame[i+j] = TabValeurASCII[j];
+        //printf("%c", Trame[i+j]);
+    }
+
+    Trame[11] = '\r';
+    Trame[12] = '\n';
+
+    //printf("\n");
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

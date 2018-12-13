@@ -1,4 +1,7 @@
-main.c:133:6:SystemClock_Config	128	static
-main.c:277:6:_Error_Handler	0	static
-main.c:312:6:ConfigLoRaClick	80	static
-main.c:79:5:main	64	static
+main.c:140:6:SystemClock_Config	128	static
+main.c:284:6:_Error_Handler	0	static
+main.c:319:6:ConfigLoRaClick	80	static
+main.c:338:6:ConversationHexaChar	16	static
+main.c:354:6:HexaChar	0	static
+main.c:416:6:AjouterUneValeurDansTrame	32	static
+main.c:82:5:main	56	static
