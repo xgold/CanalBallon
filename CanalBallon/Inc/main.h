@@ -57,7 +57,13 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef enum
+{
+  INIT_SENSORS,
+  GET_SENSOR_DATA,
+  FORMAT_DATA,
+  SEND_DATA
+} status_etat;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -67,7 +73,7 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+#define DEBUG 1
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

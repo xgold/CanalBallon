@@ -13,7 +13,7 @@
 
 void Venus_GPS_restart(UART_HandleTypeDef*);
 void Venus_GPS_configure_message(UART_HandleTypeDef*);
-void Venus_GPS_get_position(UART_HandleTypeDef*,uint8_t*);
+void Venus_GPS_get_position(uint8_t*, uint8_t, float*, float*);
 
 
 #endif /* INC_VENUS_GPS_H_ */

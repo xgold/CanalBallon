@@ -44,13 +44,12 @@
 #include "spi.h"
 #include "usart.h"
 #include "wwdg.h"
-#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Venus_GPS.h"
-//#include "DHT22.h"
-#include <string.h>
+#include "DHT22.h"
+#include "com_LoRa.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,121 +78,51 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-#define DHT_SUCCESS 0
-#define DHT_TIMEOUT_ERROR 1
-#define DHT_CHECKSUM_ERROR 2
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-void delayUS_ASM(uint32_t us) {
-	volatile uint32_t counter = us;
-	while (counter--)
-		;
-}
-#pragma GCC pop_options
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t rx_buff[20];
+const uint8_t GPS_DATA_RECEIVE = 100;
+
+HAL_StatusTypeDef uart_transmit;
+uint8_t rx_buff[100];
+uint8_t gps_data_buffer[100];
 uint8_t tx_buff[] = {'1','2','3','4','5','\r','\n'};
-int FLAG_GPS_DATA_RECEIVE = 0;
+uint8_t FLAG_GPS_DATA_RECEIVE = 0;
+float temp_pin4, hum_pin4, temp_pin5, hum_pin5;
+float north_metric, east_metric;
 
-unsigned char readDHT22(float* temperature, float* humidity) {
-	static unsigned char data[5] = { 0 }; // Chaine de char retourner par le DHT22
-	unsigned long max_cycles = 1000000;
-	unsigned long timeout = 0;
-	char buffer[50];
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+#if DEBUG
+   char buffer1[15];
+   char buffer2[15];
+#endif
 
-	// Start Signal
-	GPIO_InitStruct.Pin = GPIO_PIN_4;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	delayUS_ASM(800);
+char TrameATTx[45];
 
-	// MODE INPUT FLOAT
-	GPIO_InitStruct.Pin = GPIO_PIN_4;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	delayUS_ASM(50);
+status_etat mon_etat = INIT_SENSORS;
 
-	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET) {
-		if (++timeout == max_cycles)
-			return DHT_TIMEOUT_ERROR;
-	}
-
-	timeout = 0;
-	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET) {
-		if (++timeout == max_cycles)
-			return DHT_TIMEOUT_ERROR;
-	}
-
-	for (unsigned char i = 0; i < 40; ++i) {
-		unsigned long cycles_low = 0;
-		unsigned long cycles_high = 0;
-
-		/* Attente d'un état LOW */
-		while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET) {
-			if (++cycles_low == max_cycles)
-				return DHT_TIMEOUT_ERROR;
-		}
-
-		/* Attente d'un état HIGH */
-		while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET) {
-			if (++cycles_high == max_cycles)
-				return DHT_TIMEOUT_ERROR;
-		}
-
-		/* Si le temps haut est supérieur au temps bas c'est un "1", sinon c'est un "0" */
-		data[i / 8] <<= 1;
-		if (cycles_high > cycles_low) {
-			data[i / 8] |= 1;
-		}
-	}
-	sprintf(buffer, "d0 = %d d1 = %d\r\n", data[0], data[1]);
-	HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
-	sprintf(buffer, "d2 = %d d3 = %d\r\n", data[2], data[3]);
-	HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
-
-	unsigned int checksum = (data[0] + data[1] + data[2] + data[3]) & 0xff;
-	if (data[4] != checksum)
-		return DHT_CHECKSUM_ERROR; /* Erreur de checksum */
-
-	/* Calcul des valeurs */
-	*humidity = data[0];
-	*humidity *= 256;
-	*humidity += data[1];
-	*humidity *= 0.1;
-
-	*temperature = data[2] & 0x7f;
-	*temperature *= 256;
-	*temperature += data[3];
-	*temperature *= 0.1;
-	if (data[2] & 0x80) {
-		*temperature *= -1;
-	}
-	return DHT_SUCCESS;
-}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	FLAG_GPS_DATA_RECEIVE = 1;
-	HAL_UART_Transmit(&huart2,rx_buff,20,100);
-  	HAL_UART_Receive_DMA(&huart1,rx_buff,20);
+	#if DEBUG
+	HAL_UART_Transmit(&huart2,&rx_buff[0],GPS_DATA_RECEIVE,10);
+	#endif
+
+	if (FLAG_GPS_DATA_RECEIVE == 0) {
+		strncpy((char *)gps_data_buffer, (char *)rx_buff, GPS_DATA_RECEIVE);
+		FLAG_GPS_DATA_RECEIVE =+ 1;
+	}
+
+	HAL_UART_Receive_DMA(&huart1,&rx_buff[0],GPS_DATA_RECEIVE);
 }
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
-  * @retval int
+  * @retval void
   */
-int main(void)
+void main(void)
 {
   /* USER CODE BEGIN 1 */
 
@@ -220,43 +149,76 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
+  MX_USART4_UART_Init();
   //MX_WWDG_Init();
   //MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_DMA(&huart1,rx_buff,20);
-  Venus_GPS_configure_message(&huart1);
-
-  float temp, hum;
-  char buffer[50];
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  /*if (FLAG_GPS_DATA_RECEIVE == 1) {
-		  Venus_GPS_get_position(&huart1,rx_buff);
-		  //HAL_UART_Transmit(&huart2,rx_buff,20,100);
-		  FLAG_GPS_DATA_RECEIVE = 0;
+	  switch(mon_etat){
+	     case INIT_SENSORS:
+	    	HAL_UART_Receive_DMA(&huart1,rx_buff,GPS_DATA_RECEIVE);
+	    	Venus_GPS_configure_message(&huart1);
+	    	ConfigLoRaClick();
+
+	    	mon_etat = GET_SENSOR_DATA;
+	    	break;
+
+	  	 case GET_SENSOR_DATA:
+	  		// Get DTH22 metrics
+	  		if (readDHT22(GPIO_PIN_4, &temp_pin4, &hum_pin4) != DHT_SUCCESS) {
+	  		   temp_pin4 = 0;
+	  		   hum_pin4 = 0;
+	  		}
+	  		if (readDHT22(GPIO_PIN_5, &temp_pin5, &hum_pin5) != DHT_SUCCESS) {
+	  		   temp_pin5 = 0;
+	  		   hum_pin5 = 0;
+     		}
+
+	  		mon_etat = FORMAT_DATA;
+	  	    break;
+
+	  	 case FORMAT_DATA:
+			// Format DTH22 data
+		    #if DEBUG
+			sprintf(buffer1, "temp 1 = %d\r\n", (int)temp_pin4);
+			sprintf(buffer2, "temp 2 = %d\r\n", (int)temp_pin5);
+			HAL_UART_Transmit(&huart2, buffer1, strlen(buffer1),10);
+			HAL_UART_Transmit(&huart2, buffer2, strlen(buffer2),10);
+			#endif
+
+			// Format GPS data
+			if (FLAG_GPS_DATA_RECEIVE) {
+				Venus_GPS_get_position(&gps_data_buffer[0], GPS_DATA_RECEIVE, &north_metric, &east_metric);
+				FLAG_GPS_DATA_RECEIVE = 0;
+			}
+			#if DEBUG
+			sprintf(buffer1, "north metric = %d\r\n", (int)north_metric);
+			sprintf(buffer2, "east metric = %d\r\n", (int)east_metric);
+			HAL_UART_Transmit(&huart2, buffer1, strlen(buffer1),10);
+			HAL_UART_Transmit(&huart2, buffer2, strlen(buffer2),10);
+			#endif
+
+	  	 	mon_etat = SEND_DATA;
+	  		break;
+
+	  	 case SEND_DATA:
+	  	    uart_transmit = EnvoisLoRa((int)(temp_pin4+0.5), (int)(hum_pin4+0.5), (int)(north_metric*100), (int)(east_metric*100), 0, 0, TrameATTx);
+	  	    HAL_Delay(3000);
+	  	    // test if uart_transmit is HAL_OK else radio is deconnected
+
+	  	    mon_etat = GET_SENSOR_DATA;
+	  		break;
+
+	  	 default:
+	  		break;
+
 	  }
-	  else{
-		  HAL_Delay(500);
-	  }*/
-	  switch (readDHT22(&temp, &hum)) {
-         case DHT_SUCCESS:
-            HAL_UART_Transmit(&huart2, "GOOD\r\n", strlen("GOOD\r\n"), 1000);
-			sprintf(buffer, "temp = %d", (int) temp);
-			HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
-			break;
-		 case DHT_TIMEOUT_ERROR:
-			HAL_UART_Transmit(&huart2, "Erreur de timing\r\n", strlen("Erreur de timing\r\n"), 1000);
-			break;
-		 case DHT_CHECKSUM_ERROR:
-			HAL_UART_Transmit(&huart2, "Erreur de checksum\r\n", strlen("Erreur de checksum\r\n"), 1000);
-			break;
-      }
-	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
