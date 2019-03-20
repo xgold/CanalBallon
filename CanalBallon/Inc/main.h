@@ -73,7 +73,7 @@ typedef enum
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define DEBUG 1
+#define DEBUG 0
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

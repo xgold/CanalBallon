@@ -7,6 +7,8 @@
 
 #include "com_LoRa.h"
 
+uint8_t buff[20] = {0};
+
 void ConfigLoRaClick(void)
 {
 	char trame[] = "sys factoryRESET\r\n";
@@ -350,11 +352,40 @@ HAL_StatusTypeDef EnvoisLoRa(int T, int H, int P, int X, int Y, int Z, char Tram
 	ConversionEnASCII(TabMesure, T, H, P, X, Y, Z);
 	AjouterUneValeurDansTrame(Trame, TabMesure);
 
-	HAL_StatusTypeDef return_uart = HAL_UART_Transmit(&huart4, (uint8_t*) Trame, 45*(uint16_t) sizeof(char), HAL_MAX_DELAY);
+	HAL_StatusTypeDef return_uart;
+	return_uart = HAL_UART_Transmit(&huart4, (uint8_t*) Trame, 45*(uint16_t) sizeof(char), HAL_MAX_DELAY);
 
     #if DEBUG
 		HAL_UART_Transmit(&huart2, (uint8_t*) Trame, 45*(uint16_t) sizeof(char), HAL_MAX_DELAY);
 	#endif
 
 	return return_uart;
+}
+
+HAL_StatusTypeDef AttenteLoRa(char* to_test, uint8_t size)
+{
+	for (int i =0; i<sizeof(buff);i++){
+		buff[i] = 0;
+	}
+	volatile HAL_StatusTypeDef t = HAL_UART_Receive(&huart4, (uint8_t*) buff, (uint16_t*) sizeof(buff), 10000);
+	uint8_t inc = 0;
+	uint8_t compt = 0;
+	uint8_t i_copie = 0;
+
+	if (t != HAL_ERROR){
+		for (int i = 0; i < size; i++){
+			i_copie = i;
+			while (buff[i_copie] == to_test[compt]){
+				inc += 1;
+				i_copie += 1;
+				compt += 1;
+				if (inc == size){
+					return HAL_OK;
+				}
+			}
+		}
+		return HAL_ERROR;
+	}
+
+	return t;
 }

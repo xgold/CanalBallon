@@ -11,7 +11,7 @@ void construct_sending_message(uint16_t length_payload, uint8_t* tab);
 uint8_t convert(char* buffer_to_parse);
 
 uint8_t buffer[50] = {0};
-
+uint8_t tab_interval[9] = {0};
 struct nmea_message {
 	uint8_t message_id;
 	uint8_t GGA;
@@ -34,7 +34,7 @@ void Venus_GPS_configure_message(UART_HandleTypeDef *huart)
 {
 	struct nmea_message messages_interval;
 	messages_interval.message_id = 0x08;
-	messages_interval.GGA = 0x3C; // 60secondes = 0x3C
+	messages_interval.GGA = 0x1E; // 60secondes = 0x3C
 	messages_interval.GLL = 0x0;
 	messages_interval.GSA = 0x0;
 	messages_interval.GSV = 0x0;
@@ -43,7 +43,6 @@ void Venus_GPS_configure_message(UART_HandleTypeDef *huart)
 	messages_interval.ZDA = 0x0;
 	messages_interval.attributes = 0x0;
 
-	uint8_t tab_interval[9] = {0};
 	tab_interval[0] = messages_interval.message_id;
 	tab_interval[1] = messages_interval.GGA;
 	tab_interval[2] = messages_interval.GLL;
@@ -71,9 +70,12 @@ void Venus_GPS_get_position(uint8_t* buffer_to_parse, uint8_t size_buffer, float
 	   while (i < size_buffer && buffer_to_parse[i] != '$') {
           i++;
        }
+
 	   if (i != size_buffer) {
     	  volatile uint8_t index = i;
+    	  // parcours des caracteres
     	  for (index = i; index < size_buffer; index++){
+    		// recherche virgule
             if (buffer_to_parse[index] == ',') {
     			virgule += 1;
     		}
@@ -81,7 +83,6 @@ void Venus_GPS_get_position(uint8_t* buffer_to_parse, uint8_t size_buffer, float
     			*north_indicator = convert(buffer_to_parse[index+1])*1000 + convert(buffer_to_parse[index+2])*100 + convert(buffer_to_parse[index+3])*10 + convert(buffer_to_parse[index+4]) + convert(buffer_to_parse[index+6])*0.1 + convert(buffer_to_parse[index+7])*0.01 + convert(buffer_to_parse[index+8])*0.001 + convert(buffer_to_parse[index+9])*0.0001;
     		}
     		if ((virgule == 4) && (buffer_to_parse[index] == ',')) {
-
     			*east_indicator = convert(buffer_to_parse[index+1])*1000 + convert(buffer_to_parse[index+2])*100 + convert(buffer_to_parse[index+3])*10 + convert(buffer_to_parse[index+4]) + convert(buffer_to_parse[index+6])*0.1 + convert(buffer_to_parse[index+7])*0.01 + convert(buffer_to_parse[index+8])*0.001 + convert(buffer_to_parse[index+9])*0.0001;
     		}
     	  }

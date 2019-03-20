@@ -85,14 +85,19 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 const uint8_t GPS_DATA_RECEIVE = 100;
 
+HAL_StatusTypeDef ok_test;
 HAL_StatusTypeDef uart_transmit;
 uint8_t rx_buff[100];
 uint8_t gps_data_buffer[100];
-uint8_t tx_buff[] = {'1','2','3','4','5','\r','\n'};
 uint8_t FLAG_GPS_DATA_RECEIVE = 0;
-float temp_pin4, hum_pin4, temp_pin5, hum_pin5;
-float north_metric, east_metric;
+float temp_pin4, hum_pin4, temp_pin5, hum_pin5 = 0;
+float north_metric, east_metric = 0;
+int8_t inte_temp, exte_temp, north, east;
+uint8_t inte_hum;
 
+
+char* test_text;
+char buffer1[15];
 #if DEBUG
    char buffer1[15];
    char buffer2[15];
@@ -105,9 +110,9 @@ status_etat mon_etat = INIT_SENSORS;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	#if DEBUG
+#if DEBUG
 	HAL_UART_Transmit(&huart2,&rx_buff[0],GPS_DATA_RECEIVE,10);
-	#endif
+#endif
 
 	if (FLAG_GPS_DATA_RECEIVE == 0) {
 		strncpy((char *)gps_data_buffer, (char *)rx_buff, GPS_DATA_RECEIVE);
@@ -162,8 +167,8 @@ void main(void)
   {
 	  switch(mon_etat){
 	     case INIT_SENSORS:
-	    	HAL_UART_Receive_DMA(&huart1,rx_buff,GPS_DATA_RECEIVE);
 	    	Venus_GPS_configure_message(&huart1);
+	    	HAL_UART_Receive_DMA(&huart1,rx_buff,GPS_DATA_RECEIVE);
 	    	ConfigLoRaClick();
 
 	    	mon_etat = GET_SENSOR_DATA;
@@ -185,31 +190,63 @@ void main(void)
 
 	  	 case FORMAT_DATA:
 			// Format DTH22 data
-		    #if DEBUG
+#if DEBUG
 			sprintf(buffer1, "temp 1 = %d\r\n", (int)temp_pin4);
 			sprintf(buffer2, "temp 2 = %d\r\n", (int)temp_pin5);
 			HAL_UART_Transmit(&huart2, buffer1, strlen(buffer1),10);
 			HAL_UART_Transmit(&huart2, buffer2, strlen(buffer2),10);
-			#endif
+#endif
 
 			// Format GPS data
 			if (FLAG_GPS_DATA_RECEIVE) {
 				Venus_GPS_get_position(&gps_data_buffer[0], GPS_DATA_RECEIVE, &north_metric, &east_metric);
 				FLAG_GPS_DATA_RECEIVE = 0;
+
 			}
-			#if DEBUG
+
+#if DEBUG
 			sprintf(buffer1, "north metric = %d\r\n", (int)north_metric);
 			sprintf(buffer2, "east metric = %d\r\n", (int)east_metric);
 			HAL_UART_Transmit(&huart2, buffer1, strlen(buffer1),10);
 			HAL_UART_Transmit(&huart2, buffer2, strlen(buffer2),10);
-			#endif
+#endif
 
-	  	 	mon_etat = SEND_DATA;
+			mon_etat = SEND_DATA;
 	  		break;
 
 	  	 case SEND_DATA:
-	  	    uart_transmit = EnvoisLoRa((int)(temp_pin4+0.5), (int)(hum_pin4+0.5), (int)(north_metric*100), (int)(east_metric*100), 0, 0, TrameATTx);
-	  	    HAL_Delay(3000);
+	  		inte_temp = (int)(temp_pin4+0.5);
+	  		inte_hum = (int)(hum_pin4+0.5);
+	  		exte_temp = (int)(temp_pin5+0.5);
+	  		north = (int)(north_metric*100);
+	  		east = (int)(east_metric*100);
+
+	  	    uart_transmit = EnvoisLoRa(inte_temp, inte_hum, exte_temp, north, east, 0, TrameATTx);
+
+	  	    if (uart_transmit == HAL_OK){
+				// On attend le Ok et radio_tx_ok avant de re envoyer
+				ok_test = AttenteLoRa("radio_tx_ok", 11);
+
+
+				if (ok_test == HAL_OK){
+					test_text = "HAL_OK";
+				}
+				else {
+					test_text = "HAL_ERROR";
+				}
+				sprintf(buffer1, "%s\r\n", test_text);
+				HAL_UART_Transmit(&huart2, buffer1, strlen(buffer1),100);
+#if DEBUG
+				HAL_UART_Transmit(&huart2, ok_test, strlen(ok_test),1000);
+#endif
+				if (ok_test != HAL_OK){
+					ConfigLoRaClick();
+				}
+	  	    }
+			else{
+				ConfigLoRaClick();
+			}
+	  	    HAL_Delay(10000);
 	  	    // test if uart_transmit is HAL_OK else radio is deconnected
 
 	  	    mon_etat = GET_SENSOR_DATA;
